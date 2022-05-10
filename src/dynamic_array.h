@@ -12,7 +12,7 @@ template <typename _Tp> struct dynamic_array {
   using const_reference = const value_type &;
 
   using pointer = value_type *;
-  using const_pointer = const pointer *;
+  using const_pointer = const value_type *;
 
   using iterator = value_type *;
   using const_iterator = const value_type *;
@@ -20,18 +20,21 @@ template <typename _Tp> struct dynamic_array {
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
 public:
-  explicit dynamic_array(std::size_t size)
-      : size_(size), header_(new value_type[size]) {}
-  ~dynamic_array() {
-    if (header_) {
-      delete[] header_;
-    }
-  }
+  explicit dynamic_array(std::size_t size) { allocate(size); }
+  ~dynamic_array() { clear(); }
 
-  dynamic_array(const dynamic_array &rhs) = default;
-  dynamic_array &operator=(const dynamic_array &rhs) = default;
-  dynamic_array(dynamic_array &&rhs) = default;
-  dynamic_array &operator=(dynamic_array &&rhs) = default;
+  dynamic_array(const dynamic_array &rhs) { assign(rhs); }
+  dynamic_array &operator=(const dynamic_array &rhs) { assign(rhs); }
+  
+  // todo complete a move-ctor
+  // dynamic_array(dynamic_array &&rhs) {
+  //   clear();
+  //   swap(rhs);
+  // }
+  // dynamic_array &operator=(dynamic_array &&rhs) {
+  //   clear();
+  //   swap(rhs);
+  // }
 
   /* element access */
   const_reference at(std::size_t index) const {
@@ -64,7 +67,7 @@ public:
   const_reference back() const noexcept { return *(end() - 1); }
 
   pointer data() noexcept { return header_; }
-  const_pointer data() const noexcept { return header_; }
+  const_pointer data() const noexcept { return const_pointer(header_); }
 
   /* iterators */
   iterator begin() noexcept { return iterator(data()); }
@@ -100,10 +103,46 @@ public:
   /* operation */
   void fill(const value_type &u) { std::fill_n(begin(), size(), u); }
 
+  void swap(dynamic_array &rhs) {
+    std::swap(header_, rhs.header_);
+    std::swap(size_, rhs.size_);
+  }
+
 private:
   pointer header_{nullptr};
   std::size_t size_ = 0;
+
+  /* allow new a array of which length is 0, and you must delete it */
+  void allocate(std::size_t size) {
+    clear();
+    size_ = size;
+    header_ = new value_type[size];
+    return;
+  }
+
+  void assign(const dynamic_array &rhs) {
+    allocate(rhs.size());
+    std::copy(rhs.begin(), rhs.end(), begin());
+  }
+  void clear() {
+    if (header_) {
+      delete[] header_;
+      header_ = nullptr;
+    }
+  }
 };
+
+template <typename _Tp>
+inline bool operator==(const dynamic_array<_Tp> &lhs,
+                       const dynamic_array<_Tp> &rhs) {
+  return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
+}
+
+template <typename _Tp>
+inline bool operator!=(const dynamic_array<_Tp> &lhs,
+                       const dynamic_array<_Tp> &rhs) {
+  return (!operator==<_Tp>(lhs, rhs));
+}
 
 // todo complete operator and swap
 }; // namespace stl_complement
